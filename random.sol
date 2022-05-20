@@ -13,8 +13,13 @@ contract Inbox{
     function getPlayers() public view returns(address[] memory){
         return players;
     }
-    function random() public view returns (uint){
+    function random() private view returns (uint){
         return uint(keccak256(abi.encodePacked(block.difficulty,block.timestamp,players)));
+    }
+    function getWinner() public payable {
+        uint index=random()%players.length;
+        payable(players[index]).transfer(address(this).balance);
+        players = new address[](0);
     }
     
 }
