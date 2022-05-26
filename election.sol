@@ -15,13 +15,14 @@ contract Election{
     }
 
     address public electionCommissioner;
-    uint public minimumCost;
-    mapping(address=>Candidate) public candidates;
+    uint minimumCost;
+    mapping(address=>Candidate) candidates;
     address[] candidateAddresses;
     uint public candidatesCount;
     uint maxCandidates=3;
-    Candidate[] allCandidates;
+    mapping(address=>bool) voters;
     uint population=4;
+    bool electionsStarted;
 
     modifier commissioner(){
         require(msg.sender==electionCommissioner);
@@ -38,6 +39,14 @@ contract Election{
         
         _;
     }
+    modifier electionsModifier(){
+        require(!electionsStarted);
+        _;
+    }
+    modifier allowVoting(){
+        require(!voters[msg.sender]);
+        _;
+    }
     
 
     constructor(uint value){
@@ -45,7 +54,7 @@ contract Election{
         minimumCost=value;
     }
 
-    function addCandidate(string memory name,string memory party) public payable notCommissioner allowEntry(name,party) {
+    function addCandidate(string memory name,string memory party) public payable notCommissioner electionsModifier allowEntry(name,party) {
         require(msg.value>minimumCost);
         candidateAddresses.push(msg.sender);
         Candidate storage candidate=candidates[msg.sender];
@@ -60,18 +69,11 @@ contract Election{
         return (candidates[c].name,candidates[c].party);
     }
 
-    // function getAllCandidates() public returns (Candidate[] memory){
-    //     delete allCandidates;
-    //     for (uint i=0;i<candidatesCount;i++){
-    //         allCandidates.push(getCandidateDetails(candidateAddresses[i]));
-    //     }
-    //     return allCandidates;
-    // }
     function getAllCandidates() public view returns (address[] memory){
         return candidateAddresses;
     }
 
-    function removeCandidates(address c) public{
+    function removeCandidates(address c) public electionsModifier{
         require(!candidates[c].removers[msg.sender]);
         if (candidates[c].removeCount >= population/2){
             candidates[c].removed=true;
@@ -93,4 +95,14 @@ contract Election{
             candidates[c].removers[msg.sender]=true;
         }
     }
+    function startElections() public  commissioner electionsModifier {
+        electionsStarted=true;
+    }
+    function voteCandidate(address candidate) public allowVoting {
+        require(electionsStarted);
+        voters[msg.sender]=true;
+        candidates[candidate].voteCount+=1;
+    }
+
+
 }
